@@ -15,6 +15,7 @@ coverage/
 
 # testing / tooling
 .playwright-mcp/
+.wrangler/
 
 # misc
 .DS_Store
