@@ -61,3 +61,16 @@ cd frontend && npm run dev          # http://localhost:3000, login admin@portal.
 ## API surface
 - Admin APIs: global `/api` prefix, JWT via `Authorization: Bearer <token>`. Swagger: `http://localhost:3001/api/docs`.
 - App integration: `GET /api/email-lists/:applicationCode/:listCode` with `X-API-KEY: <key>` (or `Authorization: Bearer <key>`). `AppGuard` enforces app isolation — a key for app X requested against app Y's list returns 403. Keep this path separate from the admin JWT path.
+
+## Workers API (`api/`) — in-progress migration
+The `backend/` NestJS API is being replaced by `api/`: a **Hono + Cloudflare Workers + D1 (SQLite)** worker with full admin parity. `backend/` stays as reference; do not modernize it.
+- `api/` is standalone (`type: module`), deps: `hono`, `zod`. Dev scripts: `npm run dev` (wrangler, port 8787), `npm test` (vitest, spawns its own server), `npm run db:setup` / `db:reset` (local D1).
+- Schema/seed: `api/schema.sql` + `api/seed.sql` (NOT auto-run by Docker; run `db:setup`). Local D1 state lives in `api/.wrangler/` (gitignored). Seeded admin `admin@portal.com` / `Admin@123`; integration keys `erp_medical_seed_demo_001`, `erp_hr_seed_demo_001`.
+- Env: `api/.dev.vars` provides `JWT_SECRET`/`FRONTEND_URL` locally (gitignored; template `.dev.vars.example`). Deployed worker needs `wrangler secret put JWT_SECRET`.
+- Parity rules (deviate only with reason): Nest-shaped errors `{ message, error, statusCode }`, camelCase + ISO timestamps + `_count`, pagination `{ total, page, limit }`, codes uppercased, `apiKey` only returned from generate/regenerate, `auth/me` never leaks the password hash, membership order = recipientType (TO/CC/BCC) then priority.
+- SQLite quirks to preserve: `UNIQUE ... COLLATE NOCASE` on `applications.code`/`departments.code` so dupe lookups are case-insensitive like MySQL.
+- Guards are per-route (not router-wide) because admin and integration share the `/api/email-lists` prefix — a router-wide `use()` would block the integration path.
+- Passwords are PBKDF2-SHA256 (100k iters, Web Crypto, `src/password.ts`) — Nest uses bcrypt, but bcryptjs pure-JS blows the free Workers CPU cap and login would 500. Stored as `pbkdf2:sha256:...` in `admin_users.password`.
+
+## Frontend
+- Point the app at the worker in local dev with `frontend/.env.local`: `NEXT_PUBLIC_API_URL=http://localhost:8787` (gitignored).

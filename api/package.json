@@ -1,0 +1,23 @@
+{
+  "name": "api",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --minify",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:setup": "wrangler d1 execute email-recipient-db --local --file=./schema.sql && wrangler d1 execute email-recipient-db --local --file=./seed.sql",
+    "db:reset": "node -e \"require('fs').rmSync('.wrangler',{recursive:true,force:true})\" && npm run db:setup"
+  },
+  "dependencies": {
+    "hono": "^4.13.8",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260916.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1",
+    "wrangler": "^4.110.0"
+  }
+}

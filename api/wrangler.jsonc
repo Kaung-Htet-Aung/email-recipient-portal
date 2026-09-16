@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "email-recipient-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-16",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "email-recipient-db",
+      "database_id": "1cdf0028-0c6e-4ade-99ff-186bd28bbd16"
+    }
+  ]
+}
