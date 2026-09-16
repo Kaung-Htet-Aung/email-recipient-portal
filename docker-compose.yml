@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8
+    container_name: email-portal-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: portal-root
+      MYSQL_DATABASE: email_recipient_portal
+      MYSQL_USER: portal
+      MYSQL_PASSWORD: portal
+    ports:
+      - "33061:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: email-portal-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: mysql://portal:portal@mysql:3306/email_recipient_portal
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      JWT_EXPIRES_IN: "24h"
+      ADMIN_DEFAULT_PASSWORD: Admin@123
+    ports:
+      - "3001:3001"
+    depends_on:
+      - mysql
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: email-portal-frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:

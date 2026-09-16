@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# build output
+dist/
+build/
+.next/
+out/
+coverage/
+
+# testing / tooling
+.playwright-mcp/
+
+# misc
+.DS_Store
+*.tsbuildinfo
+*.log
+.npm/
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# IDEs / local tooling
+.vscode/
+.idea/
