@@ -19,7 +19,12 @@ const app = new Hono<{ Bindings: AppEnv['Bindings']; Variables: AppEnv['Variable
 app.use(
   '*',
   cors({
-    origin: (origin, c) => c.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: (origin, c) => {
+      const allowed = c.env.FRONTEND_URL || 'http://localhost:3000'
+      if (!origin) return allowed
+      const stripTrailingDot = (u: string) => u.replace(/\.$/, '')
+      return stripTrailingDot(origin) === stripTrailingDot(allowed) ? origin : null
+    },
     credentials: true,
   }),
 )
