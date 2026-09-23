@@ -37,7 +37,12 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(values.email, values.password);
-      router.replace("/dashboard");
+      const nextParam = new URLSearchParams(window.location.search).get("next");
+      const redirectTo =
+        nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")
+          ? nextParam
+          : "/dashboard";
+      router.replace(redirectTo);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Login failed");
     } finally {

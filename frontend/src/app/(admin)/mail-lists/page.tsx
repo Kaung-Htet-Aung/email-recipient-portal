@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
-import { Plus, Pencil, Power, Loader2, Eye } from "lucide-react";
+import { Plus, Pencil, Power, Trash2, Loader2, Eye } from "lucide-react";
 import { emailListsService } from "@/services/email-lists";
 import { applicationsService } from "@/services/applications";
 import { emailListSchema, type EmailListInput } from "@/validations";
@@ -51,6 +51,7 @@ export default function EmailListsPage() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<EmailList | null>(null);
+  const [deleting, setDeleting] = useState<EmailList | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [applicationFilter, setApplicationFilter] = useState("");
 
@@ -87,6 +88,15 @@ export default function EmailListsPage() {
     mutationFn: emailListsService.toggleStatus,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["email-lists"] }),
+    onError: (e: Error) => window.alert(e.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: emailListsService.remove,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-lists"] });
+      setDeleting(null);
+    },
     onError: (e: Error) => window.alert(e.message),
   });
 
@@ -197,7 +207,7 @@ export default function EmailListsPage() {
                   </TableCell>
                   <TableCell className="font-medium">
                     <Link
-                      href={`/email-lists/${list.id}`}
+                     href={`/mail-lists/${list.id}`}
                       className="hover:underline"
                     >
                       {list.name}
@@ -220,7 +230,7 @@ export default function EmailListsPage() {
                         aria-label={`View ${list.name}`}
                         asChild
                       >
-                        <Link href={`/email-lists/${list.id}`}>
+                        <Link href={`/mail-lists/${list.id}`}>
                           <Eye className="h-4 w-4" />
                         </Link>
                       </Button>
@@ -242,6 +252,15 @@ export default function EmailListsPage() {
                         onClick={() => toggleMutation.mutate(list.id)}
                       >
                         <Power className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Delete ${list.name}`}
+                        title="Delete"
+                        onClick={() => setDeleting(list)}
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>
@@ -347,6 +366,38 @@ export default function EmailListsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete mailing list?</DialogTitle>
+            <DialogDescription>
+              {deleting?.name} will be deleted permanently along with all of
+              its recipient members. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleting(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleting && deleteMutation.mutate(deleting.id)}
+            >
+              {deleteMutation.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+              Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -22,11 +22,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (typeof window === "undefined") return;
     const token = window.localStorage.getItem("erp_token");
     const userRaw = window.localStorage.getItem("erp_user");
-    set({
-      token,
-      user: userRaw ? (JSON.parse(userRaw) as AdminUser) : null,
-      hydrated: true,
-    });
+    let user: AdminUser | null = null;
+    if (userRaw) {
+      try {
+        user = JSON.parse(userRaw) as AdminUser;
+      } catch {
+        user = null;
+      }
+    }
+    set({ token, user, hydrated: true });
   },
 
   login: async (email, password) => {
@@ -34,6 +38,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       email,
       password,
     });
+    console.log(data)
     window.localStorage.setItem("erp_token", data.token);
     window.localStorage.setItem("erp_user", JSON.stringify(data.user));
     set({ token: data.token, user: data.user, hydrated: true });

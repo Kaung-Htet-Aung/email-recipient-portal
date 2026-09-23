@@ -234,3 +234,31 @@ recipientRoutes.patch('/:id/toggle-status', async (c) => {
   const row = await db.prepare(`${BASE_SELECT} WHERE r.id = ?`).bind(id).first<Record<string, unknown>>()
   return c.json(recipientFromJoined(row!))
 })
+
+recipientRoutes.delete('/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  const row = await db.prepare(`${BASE_SELECT} WHERE r.id = ?`)
+    .bind(id)
+    .first<Record<string, unknown>>()
+  if (!row) throw notFound('Recipient not found')
+
+  await db.prepare('DELETE FROM email_recipients WHERE id = ?').bind(id).run()
+
+  const dto = recipientFromJoined(row)
+  await recordAudit(db, {
+    userId: c.get('admin')!.id,
+    action: 'DELETE_RECIPIENT',
+    entityType: 'EmailRecipient',
+    entityId: id,
+    oldValue: {
+      employeeCode: dto.employeeCode,
+      name: dto.name,
+      email: dto.email,
+      departmentId: dto.departmentId,
+      status: dto.status,
+    },
+  })
+
+  return c.json(dto)
+})

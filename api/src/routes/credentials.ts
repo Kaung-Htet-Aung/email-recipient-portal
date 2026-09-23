@@ -131,7 +131,7 @@ credentialRoutes.patch('/:id/revoke', async (c) => {
   })
 })
 
-credentialRoutes.post('/:id/regenerate', async (c) => {
+credentialRoutes.patch('/:id/regenerate', async (c) => {
   const db = c.env.DB
   const row = await findCredential(db, c.req.param('id'))
   const cred = mapCredentialRow(row)
@@ -150,5 +150,14 @@ credentialRoutes.post('/:id/regenerate', async (c) => {
     entityId: cred.id,
   })
 
-  return c.json({ id: cred.id, name: cred.name, status: cred.status, apiKey })
+  return c.json({
+    id: cred.id,
+    applicationId: cred.application_id,
+    name: cred.name,
+    description: cred.description,
+    status: cred.status,
+    apiKey,
+    createdAt: cred.created_at,
+    updatedAt: ts,
+  })
 })

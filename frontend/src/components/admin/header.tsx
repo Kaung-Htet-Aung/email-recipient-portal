@@ -24,7 +24,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   }
 
   return (
-    <header className="flex bg-card h-14 items-center justify-end gap-3 border-b px-4">
+    <header className="flex bg-[#006838] text-white h-14 items-center justify-end gap-3 border-b px-4">
       <Button
         variant="ghost"
         size="icon"

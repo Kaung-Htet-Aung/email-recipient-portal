@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS email_recipients (
 CREATE TABLE IF NOT EXISTS email_lists (
   id             TEXT PRIMARY KEY,
   application_id TEXT NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
-  code           TEXT NOT NULL,
+  code           TEXT NOT NULL COLLATE NOCASE,
   name           TEXT NOT NULL,
   description    TEXT,
   status         TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE')),

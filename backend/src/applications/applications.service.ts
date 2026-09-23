@@ -39,7 +39,10 @@ export class ApplicationsService {
     });
 
     if (!app) throw new NotFoundException('Application not found');
-    return app;
+    return {
+      ...app,
+      credentials: app.credentials.map(({ apiKey: _apiKey, ...credential }) => credential),
+    };
   }
 
   async findByCode(code: string) {

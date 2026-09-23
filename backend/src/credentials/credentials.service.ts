@@ -1,10 +1,8 @@
 import {
   Injectable,
-  ConflictException,
   NotFoundException,
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
-import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateCredentialDto } from './dto/create-credential.dto';
@@ -56,11 +54,12 @@ export class CredentialsService {
 
   async findAll(applicationId?: string) {
     const where = applicationId ? { applicationId } : {};
-    return this.prisma.applicationCredential.findMany({
+    const credentials = await this.prisma.applicationCredential.findMany({
       where,
       include: { application: true },
       orderBy: { createdAt: 'desc' },
     });
+    return credentials.map(({ apiKey: _apiKey, ...credential }) => credential);
   }
 
   async revoke(id: string, userId?: string) {

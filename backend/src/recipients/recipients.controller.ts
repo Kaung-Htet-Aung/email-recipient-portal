@@ -4,6 +4,7 @@ import {
   Post,
   Put,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -56,5 +57,12 @@ export class RecipientsController {
   @ApiParam({ name: 'id', type: String })
   toggleStatus(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.recipientsService.toggleStatus(id, req.user.id);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a recipient' })
+  @ApiParam({ name: 'id', type: String })
+  remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.recipientsService.remove(id, req.user.id);
   }
 }

@@ -28,7 +28,7 @@ export default function DashboardPage() {
 
   const stats = [
     { label: "Applications", value: data.counts.applications, icon: Boxes },
-    { label: "Email Lists", value: data.counts.emailLists, icon: ListOrdered },
+    { label: "Mailing Lists", value: data.counts.emailLists, icon: ListOrdered },
     { label: "Recipients", value: data.counts.recipients, icon: Users },
     { label: "Departments", value: data.counts.departments, icon: Building2 },
     { label: "Active Lists", value: data.counts.activeLists, icon: MailCheck },

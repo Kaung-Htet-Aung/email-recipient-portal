@@ -276,6 +276,35 @@ emailListRoutes.patch('/:id/toggle-status', adminGuard, async (c) => {
   )
 })
 
+emailListRoutes.delete('/:id', adminGuard, async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  const row = await db
+    .prepare(`${LIST_WITH_APP_AND_COUNT} WHERE l.id = ?`)
+    .bind(id)
+    .first<Record<string, unknown>>()
+  if (!row) throw notFound('Email list not found')
+
+  await db.prepare('DELETE FROM email_lists WHERE id = ?').bind(id).run()
+
+  const dto = emailListFromJoined(row)
+  await recordAudit(db, {
+    userId: c.get('admin')!.id,
+    action: 'DELETE_EMAIL_LIST',
+    entityType: 'EmailList',
+    entityId: id,
+    oldValue: {
+      applicationId: dto.applicationId,
+      code: dto.code,
+      name: dto.name,
+      description: dto.description,
+      status: dto.status,
+    },
+  })
+
+  return c.json(dto)
+})
+
 emailListRoutes.post('/:id/recipients', adminGuard, async (c) => {
   const db = c.env.DB
   const emailListId = c.req.param('id')

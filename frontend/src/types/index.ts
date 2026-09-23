@@ -62,6 +62,7 @@ export interface EmailListRecipient {
   recipientId: string;
   recipient: EmailRecipient;
   recipientType: RecipientType;
+  role?: string | null;
   priority: number;
   createdAt: string;
   updatedAt: string;
@@ -148,5 +149,7 @@ export interface ResolvedList {
     name: string;
     email: string;
     type: RecipientType;
+    role?: string | null;
+    priority: number;
   }[];
 }

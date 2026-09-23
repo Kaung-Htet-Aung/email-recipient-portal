@@ -411,6 +411,7 @@ export default function ApplicationsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        disabled={revokeCredential.isPending}
                         onClick={() => revokeCredential.mutate(cred.id)}
                       >
                         <Power className="h-4 w-4" />

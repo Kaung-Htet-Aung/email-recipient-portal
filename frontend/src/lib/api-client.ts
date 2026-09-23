@@ -35,8 +35,13 @@ async function request<T>(
   });
 
   if (res.status === 401 && typeof window !== "undefined") {
+    const hadToken = !!window.localStorage.getItem("erp_token");
     window.localStorage.removeItem("erp_token");
     window.localStorage.removeItem("erp_user");
+    if (hadToken && window.location.pathname !== "/login") {
+      const dest = `${window.location.origin}/login?next=${encodeURIComponent(window.location.pathname)}`;
+      window.location.replace(dest);
+    }
   }
 
   if (!res.ok) {

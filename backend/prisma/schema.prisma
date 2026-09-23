@@ -3,24 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "sqlserver"
   url      = env("DATABASE_URL")
-}
-
-enum Status {
-  ACTIVE
-  INACTIVE
-}
-
-enum RecipientType {
-  TO
-  CC
-  BCC
-}
-
-enum AdminRole {
-  ADMIN
-  VIEWER
 }
 
 model Application {
@@ -28,7 +12,7 @@ model Application {
   code        String   @unique
   name        String
   description String?
-  status      Status   @default(ACTIVE)
+  status      String   @default("ACTIVE")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -45,7 +29,7 @@ model ApplicationCredential {
   apiKey        String      @unique
   name          String
   description   String?
-  status        Status      @default(ACTIVE)
+  status        String      @default("ACTIVE")
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -57,7 +41,7 @@ model Department {
   code        String   @unique
   name        String
   description String?
-  status      Status   @default(ACTIVE)
+  status      String   @default("ACTIVE")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -73,7 +57,7 @@ model EmailRecipient {
   email        String
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  status       Status      @default(ACTIVE)
+  status       String      @default("ACTIVE")
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
@@ -91,7 +75,7 @@ model EmailList {
   code          String
   name          String
   description   String?
-  status        Status      @default(ACTIVE)
+  status        String      @default("ACTIVE")
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -102,29 +86,30 @@ model EmailList {
 }
 
 model EmailListRecipient {
-  id            String         @id @default(uuid())
+  id            String       @id @default(uuid())
   emailListId   String
-  emailList     EmailList      @relation(fields: [emailListId], references: [id], onDelete: Cascade)
+  emailList     EmailList    @relation(fields: [emailListId], references: [id], onDelete: Cascade)
   recipientId   String
   recipient     EmailRecipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
-  recipientType RecipientType  @default(TO)
-  priority      Int            @default(0)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  recipientType String       @default("TO")
+  role          String?
+  priority      Int          @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   @@unique([emailListId, recipientId])
   @@map("email_list_recipients")
 }
 
 model AdminUser {
-  id        String    @id @default(uuid())
-  email     String    @unique
+  id        String   @id @default(uuid())
+  email     String   @unique
   name      String
   password  String
-  role      AdminRole @default(VIEWER)
-  status    Status    @default(ACTIVE)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  role      String   @default("VIEWER")
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   auditLogs AuditLog[]
 
@@ -138,8 +123,8 @@ model AuditLog {
   action     String
   entityType String
   entityId   String?
-  oldValue   Json?
-  newValue   Json?
+  oldValue   String?
+  newValue   String?
   ipAddress  String?
   createdAt  DateTime  @default(now())
 

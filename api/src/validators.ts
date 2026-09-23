@@ -77,7 +77,7 @@ export const queryRecipientSchema = z.object({
   departmentId: optionalString,
   status: statusEnum.optional(),
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(50),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
 })
 
 export const createEmailListSchema = z
@@ -91,6 +91,7 @@ export const createEmailListSchema = z
 
 export const updateEmailListSchema = z
   .object({
+    applicationId: z.string().uuid().optional(),
     code: optionalString,
     name: optionalString,
     description: optionalDescription,

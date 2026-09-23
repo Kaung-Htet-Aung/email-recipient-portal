@@ -67,6 +67,13 @@ export class EmailListsController {
     return this.emailListsService.toggleStatus(id, req.user.id);
   }
 
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete an email list' })
+  @ApiParam({ name: 'id', type: String })
+  remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.emailListsService.remove(id, req.user.id);
+  }
+
   @Post(':id/recipients')
   @ApiOperation({ summary: 'Add a recipient to an email list' })
   @ApiParam({ name: 'id', type: String })
@@ -87,7 +94,7 @@ export class EmailListsController {
   }
 
   @Patch(':id/recipients/:recipientId')
-  @ApiOperation({ summary: 'Update recipient type (TO/CC/BCC) and priority' })
+  @ApiOperation({ summary: 'Update recipient type (TO/CC/BCC), role, and priority' })
   @ApiParam({ name: 'id', type: String })
   @ApiParam({ name: 'recipientId', type: String })
   updateRecipientType(

@@ -11,7 +11,7 @@ import { CreateEmailListDto } from './dto/create-email-list.dto';
 import { UpdateEmailListDto } from './dto/update-email-list.dto';
 import { AddRecipientDto } from './dto/add-recipient.dto';
 import { UpdateRecipientTypeDto } from './dto/update-recipient-type.dto';
-import { RecipientType } from '@prisma/client';
+import type { EmailListRecipient } from '@prisma/client';
 
 @Injectable()
 export class EmailListsService {
@@ -46,7 +46,7 @@ export class EmailListsService {
               include: { department: true },
             },
           },
-          orderBy: [{ recipientType: 'asc' }, { priority: 'asc' }],
+          orderBy: [{ recipientType: 'desc' }, { priority: 'asc' }],
         },
       },
     });
@@ -106,7 +106,11 @@ export class EmailListsService {
 
     const updated = await this.prisma.emailList.update({
       where: { id },
-      data: { ...dto, code: dto.code ? dto.code.toUpperCase() : undefined },
+      data: {
+        code: dto.code ? dto.code.toUpperCase() : undefined,
+        name: dto.name,
+        description: dto.description,
+      },
     });
 
     await this.auditService.record({
@@ -129,6 +133,29 @@ export class EmailListsService {
     });
 
     return updated;
+  }
+
+  async remove(id: string, userId?: string) {
+    const list = await this.prisma.emailList.findUnique({ where: { id } });
+    if (!list) throw new NotFoundException('Email list not found');
+
+    const removed = await this.prisma.emailList.delete({ where: { id } });
+
+    await this.auditService.record({
+      userId,
+      action: 'DELETE_EMAIL_LIST',
+      entityType: 'EmailList',
+      entityId: id,
+      oldValue: {
+        applicationId: list.applicationId,
+        code: list.code,
+        name: list.name,
+        description: list.description,
+        status: list.status,
+      },
+    });
+
+    return removed;
   }
 
   async toggleStatus(id: string, userId?: string) {
@@ -173,12 +200,90 @@ export class EmailListsService {
       throw new ConflictException('Recipient is already in this email list');
     }
 
+    const anchorId = dto.beforeRecipientId ?? dto.afterRecipientId;
+
+    let priority = dto.priority ?? 0;
+    let placement: { before?: string; after?: string } | undefined;
+
+    if (anchorId) {
+      const isBefore = Boolean(dto.beforeRecipientId);
+      const anchor = await this.prisma.emailListRecipient.findFirst({
+        where: { id: anchorId, emailListId },
+      });
+      if (!anchor) {
+        throw new NotFoundException('Position recipient not found in this email list');
+      }
+
+      const memberships = await this.prisma.emailListRecipient.findMany({
+        where: { emailListId },
+        orderBy: [{ recipientType: 'desc' }, { priority: 'asc' }],
+      });
+
+      const orderedIds = memberships.map((m) => m.id);
+      const anchorIndex = orderedIds.indexOf(anchor.id);
+      const insertIndex = isBefore ? anchorIndex : anchorIndex + 1;
+      orderedIds.splice(insertIndex, 0, 'NEW');
+
+      priority = insertIndex;
+      placement = {
+        before: isBefore ? anchor.recipientId : undefined,
+        after: !isBefore ? anchor.recipientId : undefined,
+      };
+
+      const updates = orderedIds
+        .map((id, idx) =>
+          id === 'NEW'
+            ? null
+            : this.prisma.emailListRecipient.update({
+                where: { id },
+                data: { priority: idx },
+              }),
+        )
+        .filter((op): op is NonNullable<typeof op> => op !== null);
+
+      const membership = this.prisma.emailListRecipient.create({
+        data: {
+          emailListId,
+          recipientId: dto.recipientId,
+          recipientType: dto.recipientType || 'TO',
+          role: dto.role,
+          priority,
+        },
+        include: { recipient: true },
+      });
+
+      const results = await this.prisma.$transaction([
+        ...updates,
+        membership,
+      ]);
+      const created = results[results.length - 1];
+
+      await this.auditService.record({
+        userId,
+        action: 'ADD_RECIPIENT_TO_LIST',
+        entityType: 'EmailListRecipient',
+        entityId: created.id,
+        newValue: {
+          emailListId,
+          recipientId: dto.recipientId,
+          recipientEmail: recipient.email,
+          recipientType: created.recipientType,
+          role: created.role,
+          priority: created.priority,
+          placement,
+        },
+      });
+
+      return created;
+    }
+
     const membership = await this.prisma.emailListRecipient.create({
       data: {
         emailListId,
         recipientId: dto.recipientId,
-        recipientType: dto.recipientType || RecipientType.TO,
-        priority: dto.priority || 0,
+        recipientType: dto.recipientType || 'TO',
+        role: dto.role,
+        priority,
       },
       include: { recipient: true },
     });
@@ -192,8 +297,9 @@ export class EmailListsService {
         emailListId,
         recipientId: dto.recipientId,
         recipientEmail: recipient.email,
-        recipientType: dto.recipientType,
-        priority: dto.priority,
+        recipientType: membership.recipientType,
+        role: membership.role,
+        priority: membership.priority,
       },
     });
 
@@ -221,6 +327,7 @@ export class EmailListsService {
         recipientId,
         recipientEmail: membership.recipient.email,
         recipientType: membership.recipientType,
+        role: membership.role,
       },
     });
 
@@ -239,13 +346,68 @@ export class EmailListsService {
     });
     if (!membership) throw new NotFoundException('Recipient not found in this email list');
 
-    const updated = await this.prisma.emailListRecipient.update({
-      where: { id: membership.id },
-      data: {
-        recipientType: dto.recipientType,
-        priority: dto.priority ?? membership.priority,
-      },
-    });
+    const anchorId = dto.beforeRecipientId ?? dto.afterRecipientId;
+
+    let updated: EmailListRecipient;
+    let placement: { before?: string; after?: string } | undefined;
+
+    if (anchorId) {
+      if (anchorId === membership.id) {
+        throw new BadRequestException('Cannot position a recipient relative to itself');
+      }
+      const isBefore = Boolean(dto.beforeRecipientId);
+      const anchor = await this.prisma.emailListRecipient.findFirst({
+        where: { id: anchorId, emailListId },
+      });
+      if (!anchor) {
+        throw new NotFoundException('Position recipient not found in this email list');
+      }
+
+      const memberships = await this.prisma.emailListRecipient.findMany({
+        where: { emailListId },
+        orderBy: [{ recipientType: 'desc' }, { priority: 'asc' }],
+      });
+
+      const orderedIds = memberships
+        .filter((m) => m.id !== membership.id)
+        .map((m) => m.id);
+      const anchorIndex = orderedIds.indexOf(anchor.id);
+      const insertIndex = isBefore ? anchorIndex : anchorIndex + 1;
+      orderedIds.splice(insertIndex, 0, membership.id);
+
+      placement = {
+        before: isBefore ? anchor.recipientId : undefined,
+        after: !isBefore ? anchor.recipientId : undefined,
+      };
+
+      const updates = orderedIds.map((id, idx) =>
+        id === membership.id
+          ? this.prisma.emailListRecipient.update({
+              where: { id },
+              data: {
+                recipientType: dto.recipientType,
+                role: dto.role,
+                priority: idx,
+              },
+            })
+          : this.prisma.emailListRecipient.update({
+              where: { id },
+              data: { priority: idx },
+            }),
+      );
+
+      const results = await this.prisma.$transaction(updates);
+      const selfResult = results.filter((r) => r.id === membership.id)[0];
+      updated = selfResult;
+    } else {
+      updated = await this.prisma.emailListRecipient.update({
+        where: { id: membership.id },
+        data: {
+          recipientType: dto.recipientType,
+          role: dto.role,
+        },
+      });
+    }
 
     await this.auditService.record({
       userId,
@@ -254,11 +416,14 @@ export class EmailListsService {
       entityId: membership.id,
       oldValue: {
         recipientType: membership.recipientType,
+        role: membership.role,
         priority: membership.priority,
       },
       newValue: {
         recipientType: updated.recipientType,
+        role: updated.role,
         priority: updated.priority,
+        ...(placement ? { placement } : {}),
       },
     });
 
@@ -287,7 +452,7 @@ export class EmailListsService {
     const memberships = await this.prisma.emailListRecipient.findMany({
       where: { emailListId: list.id },
       include: { recipient: true },
-      orderBy: [{ recipientType: 'asc' }, { priority: 'asc' }],
+      orderBy: [{ recipientType: 'desc' }, { priority: 'asc' }],
     });
 
     const recipients = memberships
@@ -296,6 +461,8 @@ export class EmailListsService {
         name: m.recipient.name,
         email: m.recipient.email,
         type: m.recipientType,
+        role: m.role,
+        priority: m.priority,
       }));
 
     return {

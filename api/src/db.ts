@@ -238,13 +238,13 @@ export function mapEmailListRow(row: Record<string, unknown>): EmailListRow {
 
 export function mapMembershipRow(row: Record<string, unknown>): MembershipRow {
   return {
-    id: row.id as string,
-    email_list_id: row.email_list_id as string,
-    recipient_id: row.recipient_id as string,
-    recipient_type: row.recipient_type as MembershipRow['recipient_type'],
-    priority: row.priority as number,
-    created_at: row.created_at as string,
-    updated_at: row.updated_at as string,
+    id: row.m_id as string,
+    email_list_id: row.m_email_list_id as string,
+    recipient_id: row.m_recipient_id as string,
+    recipient_type: row.m_recipient_type as MembershipRow['recipient_type'],
+    priority: row.m_priority as number,
+    created_at: row.m_created_at as string,
+    updated_at: row.m_updated_at as string,
   }
 }
 

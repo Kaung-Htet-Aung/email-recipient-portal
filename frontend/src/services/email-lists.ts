@@ -15,7 +15,10 @@ export interface EmailListPayload {
 export interface AddRecipientPayload {
   recipientId: string;
   recipientType?: RecipientType;
+  role?: string;
   priority?: number;
+  beforeRecipientId?: string;
+  afterRecipientId?: string;
 }
 
 export const emailListsService = {
@@ -37,10 +40,17 @@ export const emailListsService = {
   updateRecipientType: (
     id: string,
     recipientId: string,
-    payload: { recipientType: RecipientType; priority?: number },
+    payload: {
+      recipientType?: RecipientType;
+      role?: string;
+      priority?: number;
+      beforeRecipientId?: string;
+      afterRecipientId?: string;
+    },
   ) =>
     api.patch<EmailListRecipient>(
       `/email-lists/${id}/recipients/${recipientId}`,
       payload,
     ),
+  remove: (id: string) => api.delete<EmailList>(`/email-lists/${id}`),
 };

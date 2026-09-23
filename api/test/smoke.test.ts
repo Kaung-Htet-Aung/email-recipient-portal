@@ -109,8 +109,11 @@ describe('read endpoints', () => {
     const body = detail.json as any
     expect(detail.status).toBe(200)
     expect(body.recipients).toHaveLength(2)
+    const order = ['TO', 'CC', 'BCC']
     const types = body.recipients.map((m: any) => m.recipientType)
-    expect(types).toEqual([...types].sort())
+    expect(types.every((t) => order.includes(t))).toBe(true)
+    const positions = types.map((t) => order.indexOf(t))
+    expect(positions).toEqual([...positions].sort((a, b) => a - b))
     expect(body.recipients[0].recipient).toHaveProperty('department')
   })
 
@@ -243,5 +246,69 @@ describe('writes + errors', () => {
     const { status, json } = await api('GET', '/api/does-not-exist')
     expect(status).toBe(404)
     expect(json).toMatchObject({ statusCode: 404, error: 'Not Found' })
+  })
+
+  it('deletes a recipient and cascades memberships', async () => {
+    const rec = await api('POST', '/api/recipients', {
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeCode: 'DEL001', name: 'Delete Me', email: 'del@company.com' }),
+    })
+    expect(rec.status).toBe(201)
+    const recId = (rec.json as any).id
+
+    const apps = await api('GET', '/api/applications', { headers: auth() })
+    const app = (apps.json as any[])[0]
+    const list = await api('POST', '/api/email-lists', {
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ applicationId: app.id, code: 'DEL_TEST_LIST', name: 'Delete Test List' }),
+    })
+    expect(list.status).toBe(201)
+    const listId = (list.json as any).id
+
+    const mem = await api('POST', `/api/email-lists/${listId}/recipients`, {
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipientId: recId }),
+    })
+    expect(mem.status).toBe(201)
+
+    const del = await api('DELETE', `/api/recipients/${recId}`, { headers: auth() })
+    expect(del.status).toBe(200)
+    expect((del.json as any).employeeCode).toBe('DEL001')
+
+    const gone = await api('GET', `/api/recipients/${recId}`, { headers: auth() })
+    expect(gone.status).toBe(404)
+
+    const listAfter = await api('GET', `/api/email-lists/${listId}`, { headers: auth() })
+    expect((listAfter.json as any).recipients).toHaveLength(0)
+
+    await api('DELETE', `/api/email-lists/${listId}`, { headers: auth() })
+  })
+
+  it('deletes an email list', async () => {
+    const apps = await api('GET', '/api/applications', { headers: auth() })
+    const app = (apps.json as any[])[0]
+    const list = await api('POST', '/api/email-lists', {
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ applicationId: app.id, code: 'DEL_ONLY', name: 'Delete Only List' }),
+    })
+    expect(list.status).toBe(201)
+    const listId = (list.json as any).id
+
+    const del = await api('DELETE', `/api/email-lists/${listId}`, { headers: auth() })
+    expect(del.status).toBe(200)
+    expect((del.json as any).code).toBe('DEL_ONLY')
+
+    const gone = await api('GET', `/api/email-lists/${listId}`, { headers: auth() })
+    expect(gone.status).toBe(404)
+  })
+
+  it('returns 404 when deleting unknown recipient', async () => {
+    const { status } = await api('DELETE', '/api/recipients/does-not-exist', { headers: auth() })
+    expect(status).toBe(404)
+  })
+
+  it('returns 404 when deleting unknown email list', async () => {
+    const { status } = await api('DELETE', '/api/email-lists/does-not-exist', { headers: auth() })
+    expect(status).toBe(404)
   })
 })

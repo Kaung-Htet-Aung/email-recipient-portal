@@ -22,11 +22,26 @@ export class AuditService {
         action: record.action,
         entityType: record.entityType,
         entityId: record.entityId,
-        oldValue: record.oldValue as any,
-        newValue: record.newValue as any,
+        oldValue:
+          record.oldValue !== undefined ? JSON.stringify(record.oldValue) : null,
+        newValue:
+          record.newValue !== undefined ? JSON.stringify(record.newValue) : null,
         ipAddress: record.ipAddress,
       },
     });
+  }
+
+  private parseLog(log: any) {
+    if (!log) return log;
+    const parse = (v: string | null) => {
+      if (!v) return null;
+      try {
+        return JSON.parse(v);
+      } catch {
+        return v;
+      }
+    };
+    return { ...log, oldValue: parse(log.oldValue), newValue: parse(log.newValue) };
   }
 
   async findAll(query: {
@@ -66,13 +81,20 @@ export class AuditService {
       this.prisma.auditLog.count({ where }),
     ]);
 
-    return { logs, total, page, limit };
+    return {
+      logs: logs.map((log) => this.parseLog(log)),
+      total,
+      page,
+      limit,
+    };
   }
 
   async findOne(id: string) {
-    return this.prisma.auditLog.findUnique({
-      where: { id },
-      include: { user: { select: { name: true, email: true } } },
-    });
+    return this.parseLog(
+      await this.prisma.auditLog.findUnique({
+        where: { id },
+        include: { user: { select: { name: true, email: true } } },
+      }),
+    );
   }
 }

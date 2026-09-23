@@ -1,15 +1,18 @@
 import {
-  IsString,
   IsNotEmpty,
   IsUUID,
   IsOptional,
   IsInt,
   Min,
-  IsEnum,
+  IsIn,
+  IsString,
+  MaxLength,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { RecipientType } from '@prisma/client';
+
+export const RECIPIENT_TYPES = ['TO', 'CC', 'BCC'] as const;
 
 export class AddRecipientDto {
   @ApiProperty({ example: 'uuid-of-recipient' })
@@ -17,10 +20,16 @@ export class AddRecipientDto {
   @IsNotEmpty()
   recipientId: string;
 
-  @ApiProperty({ enum: RecipientType, example: 'TO' })
-  @IsEnum(RecipientType)
+  @ApiProperty({ enum: RECIPIENT_TYPES, example: 'TO' })
+  @IsIn(RECIPIENT_TYPES)
   @IsOptional()
-  recipientType?: RecipientType;
+  recipientType?: string;
+
+  @ApiPropertyOptional({ example: 'APPROVER' })
+  @IsString()
+  @MaxLength(255)
+  @IsOptional()
+  role?: string;
 
   @ApiPropertyOptional({ example: 0 })
   @Type(() => Number)
@@ -28,4 +37,16 @@ export class AddRecipientDto {
   @Min(0)
   @IsOptional()
   priority?: number;
+
+  @ApiPropertyOptional({ example: 'uuid-of-email-list-recipient' })
+  @IsUUID()
+  @IsOptional()
+  @ValidateIf((o) => !o.afterRecipientId, { message: 'beforeRecipientId and afterRecipientId cannot both be set' })
+  beforeRecipientId?: string;
+
+  @ApiPropertyOptional({ example: 'uuid-of-email-list-recipient' })
+  @IsUUID()
+  @IsOptional()
+  @ValidateIf((o) => !o.beforeRecipientId, { message: 'beforeRecipientId and afterRecipientId cannot both be set' })
+  afterRecipientId?: string;
 }

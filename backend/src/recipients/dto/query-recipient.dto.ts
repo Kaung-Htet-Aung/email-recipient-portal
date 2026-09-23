@@ -1,7 +1,8 @@
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Status } from '@prisma/client';
+
+export const RECIPIENT_STATUSES = ['ACTIVE', 'INACTIVE'] as const;
 
 export class QueryRecipientDto {
   @ApiPropertyOptional({ example: 'Aung' })
@@ -14,10 +15,10 @@ export class QueryRecipientDto {
   @IsOptional()
   departmentId?: string;
 
-  @ApiPropertyOptional({ enum: Status, example: 'ACTIVE' })
-  @IsEnum(Status)
+  @ApiPropertyOptional({ enum: RECIPIENT_STATUSES, example: 'ACTIVE' })
+  @IsIn(RECIPIENT_STATUSES)
   @IsOptional()
-  status?: Status;
+  status?: string;
 
   @ApiPropertyOptional({ example: 1 })
   @Type(() => Number)

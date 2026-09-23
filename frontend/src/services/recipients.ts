@@ -37,4 +37,5 @@ export const recipientsService = {
     api.put<EmailRecipient>(`/recipients/${id}`, payload),
   toggleStatus: (id: string) =>
     api.patch<EmailRecipient>(`/recipients/${id}/toggle-status`),
+  remove: (id: string) => api.delete<EmailRecipient>(`/recipients/${id}`),
 };

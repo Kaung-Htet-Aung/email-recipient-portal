@@ -8,6 +8,7 @@ import {
   Plus,
   Pencil,
   Power,
+  Trash2,
   Loader2,
   Search,
   ChevronLeft,
@@ -59,6 +60,7 @@ export default function RecipientsPage() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<EmailRecipient | null>(null);
+  const [deleting, setDeleting] = useState<EmailRecipient | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -106,6 +108,15 @@ export default function RecipientsPage() {
     mutationFn: recipientsService.toggleStatus,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["recipients"] }),
+    onError: (e: Error) => window.alert(e.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: recipientsService.remove,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["recipients"] });
+      setDeleting(null);
+    },
     onError: (e: Error) => window.alert(e.message),
   });
 
@@ -293,6 +304,15 @@ export default function RecipientsPage() {
                       >
                         <Power className="h-4 w-4" />
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Delete ${r.name}`}
+                        title="Delete"
+                        onClick={() => setDeleting(r)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -422,6 +442,38 @@ export default function RecipientsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete recipient?</DialogTitle>
+            <DialogDescription>
+              {deleting?.name} will be removed permanently. They will also be
+              removed from all mailing lists. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleting(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleting && deleteMutation.mutate(deleting.id)}
+            >
+              {deleteMutation.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+              Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

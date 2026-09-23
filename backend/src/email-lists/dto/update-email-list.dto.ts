@@ -1,7 +1,12 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsUUID } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateEmailListDto {
+  @ApiPropertyOptional({ example: 'uuid-of-application' })
+  @IsUUID()
+  @IsOptional()
+  applicationId?: string;
+
   @ApiPropertyOptional({ example: 'MEDICAL_CLAIM_APPROVERS' })
   @IsString()
   @IsOptional()

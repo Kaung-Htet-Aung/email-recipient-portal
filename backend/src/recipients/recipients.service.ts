@@ -137,6 +137,33 @@ export class RecipientsService {
     return updated;
   }
 
+  async remove(id: string, userId?: string) {
+    const recipient = await this.prisma.emailRecipient.findUnique({
+      where: { id },
+    });
+    if (!recipient) throw new NotFoundException('Recipient not found');
+
+    const removed = await this.prisma.emailRecipient.delete({
+      where: { id },
+    });
+
+    await this.auditService.record({
+      userId,
+      action: 'DELETE_RECIPIENT',
+      entityType: 'EmailRecipient',
+      entityId: id,
+      oldValue: {
+        employeeCode: recipient.employeeCode,
+        name: recipient.name,
+        email: recipient.email,
+        departmentId: recipient.departmentId,
+        status: recipient.status,
+      },
+    });
+
+    return removed;
+  }
+
   async toggleStatus(id: string, userId?: string) {
     const recipient = await this.prisma.emailRecipient.findUnique({
       where: { id },
