@@ -16,4 +16,5 @@ export const departmentsService = {
     api.put<Department>(`/departments/${id}`, payload),
   toggleStatus: (id: string) =>
     api.patch<Department>(`/departments/${id}/toggle-status`),
+  remove: (id: string) => api.delete<Department>(`/departments/${id}`),
 };

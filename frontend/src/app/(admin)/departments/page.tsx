@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Power, Loader2 } from "lucide-react";
+import { Plus, Pencil, Power, Trash2, Loader2 } from "lucide-react";
 import { departmentsService } from "@/services/departments";
 import { departmentSchema, type DepartmentInput } from "@/validations";
 import type { Department } from "@/types";
@@ -41,6 +41,7 @@ export default function DepartmentsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Department | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<Department | null>(null);
 
   const { data: departments, isLoading } = useQuery({
     queryKey: ["departments"],
@@ -71,6 +72,15 @@ export default function DepartmentsPage() {
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["departments"] }),
     onError: (e: Error) => window.alert(e.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: departmentsService.remove,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["departments"] });
+      setDeleting(null);
+    },
+    onError: (e: Error) => setError(e.message),
   });
 
   const form = useForm<DepartmentInput>({
@@ -179,6 +189,15 @@ export default function DepartmentsPage() {
                       >
                         <Power className="h-4 w-4" />
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Delete ${dept.name}`}
+                        title="Delete"
+                        onClick={() => setDeleting(dept)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -252,6 +271,39 @@ export default function DepartmentsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete department?</DialogTitle>
+            <DialogDescription>
+              {deleting?.name} will be deleted permanently. Its recipients will
+              be kept but lose their department assignment. This cannot be
+              undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleting(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleting && deleteMutation.mutate(deleting.id)}
+            >
+              {deleteMutation.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+              Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

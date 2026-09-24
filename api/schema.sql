@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS email_list_recipients (
   email_list_id  TEXT NOT NULL REFERENCES email_lists(id) ON DELETE CASCADE,
   recipient_id   TEXT NOT NULL REFERENCES email_recipients(id) ON DELETE CASCADE,
   recipient_type TEXT NOT NULL DEFAULT 'TO' CHECK (recipient_type IN ('TO', 'CC', 'BCC')),
+  role           TEXT,
   priority       INTEGER NOT NULL DEFAULT 0,
   created_at     TEXT NOT NULL,
   updated_at     TEXT NOT NULL,

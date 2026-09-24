@@ -78,6 +78,7 @@ export interface MembershipRow {
   email_list_id: string
   recipient_id: string
   recipient_type: RecipientType
+  role: string | null
   priority: number
   created_at: string
   updated_at: string
@@ -172,6 +173,7 @@ export interface MembershipDto {
   recipientId: string
   recipient?: RecipientDto
   recipientType: RecipientType
+  role?: string | null
   priority: number
   createdAt: string
   updatedAt: string

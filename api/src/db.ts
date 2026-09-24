@@ -103,6 +103,7 @@ export function toMembership(
     recipientId: row.recipient_id,
     recipient: recipient ?? undefined,
     recipientType: row.recipient_type,
+    role: row.role,
     priority: row.priority,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -183,7 +184,7 @@ export const RECIPIENT_FIELDS_SQL = `
 `
 
 export const MEMBERSHIP_FIELDS_SQL = `
-  m.id, m.email_list_id, m.recipient_id, m.recipient_type, m.priority, m.created_at, m.updated_at
+  m.id, m.email_list_id, m.recipient_id, m.recipient_type, m.role, m.priority, m.created_at, m.updated_at
 `
 
 export function mapApplicationRow(row: Record<string, unknown>): ApplicationRow {
@@ -242,6 +243,7 @@ export function mapMembershipRow(row: Record<string, unknown>): MembershipRow {
     email_list_id: row.m_email_list_id as string,
     recipient_id: row.m_recipient_id as string,
     recipient_type: row.m_recipient_type as MembershipRow['recipient_type'],
+    role: (row.m_role as string | null) ?? null,
     priority: row.m_priority as number,
     created_at: row.m_created_at as string,
     updated_at: row.m_updated_at as string,

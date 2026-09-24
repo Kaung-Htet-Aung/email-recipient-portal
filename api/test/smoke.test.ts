@@ -172,6 +172,8 @@ describe('integration endpoint', () => {
       expect(r).toHaveProperty('name')
       expect(r).toHaveProperty('email')
       expect(r).toHaveProperty('type')
+      expect(r).toHaveProperty('role')
+      expect(r).toHaveProperty('priority')
     }
   })
 
@@ -191,6 +193,163 @@ describe('integration endpoint', () => {
       headers: { 'X-API-KEY': 'erp_bad_key' },
     })
     expect(status).toBe(401)
+  })
+})
+
+describe('mail-list memberships (role + placement)', () => {
+  async function createRecipient(code: string, name: string, email: string) {
+    const res = await api('POST', '/api/recipients', {
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeCode: code, name, email }),
+    })
+    expect(res.status).toBe(201)
+    return (res.json as any).id
+  }
+
+  it('adds with role + placement, reorders via edit, and rejects bad placement', async () => {
+    const apps = await api('GET', '/api/applications', { headers: auth() })
+    const app = (apps.json as any[])[0]
+    const list = await api('POST', '/api/email-lists', {
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ applicationId: app.id, code: 'ROLE_TEST', name: 'Role Test List' }),
+    })
+    expect(list.status).toBe(201)
+    const listId = (list.json as any).id
+
+    const aId = await createRecipient('ROLEA', 'Role A', 'rolea@company.com')
+    const bId = await createRecipient('ROLEB', 'Role B', 'roleb@company.com')
+    const cId = await createRecipient('ROLEC', 'Role C', 'rolec@company.com')
+    const dId = await createRecipient('ROLED', 'Role D', 'roled@company.com')
+
+    const mA = await api('POST', `/api/email-lists/${listId}/recipients`, {
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipientId: aId }),
+    })
+    expect(mA.status).toBe(201)
+    const mAId = (mA.json as any).id
+
+    const mB = await api('POST', `/api/email-lists/${listId}/recipients`, {
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipientId: bId, afterRecipientId: mAId }),
+    })
+    expect(mB.status).toBe(201)
+    expect((mB.json as any).priority).toBe(1)
+    const mBId = (mB.json as any).id
+
+    const mC = await api('POST', `/api/email-lists/${listId}/recipients`, {
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipientId: cId, beforeRecipientId: mAId, role: 'REVIEWER' }),
+    })
+    expect(mC.status).toBe(201)
+    expect((mC.json as any).role).toBe('REVIEWER')
+    const mCId = (mC.json as any).id
+
+    const detail1 = await api('GET', `/api/email-lists/${listId}`, { headers: auth() })
+    expect(detail1.status).toBe(200)
+    const members1 = (detail1.json as any).recipients
+    expect(members1.map((m: any) => m.recipient.employeeCode)).toEqual(['ROLEC', 'ROLEA', 'ROLEB'])
+    expect(members1[0].role).toBe('REVIEWER')
+    expect(members1.map((m: any) => m.priority)).toEqual([0, 1, 2])
+
+    const moveA = await api('PATCH', `/api/email-lists/${listId}/recipients/${aId}`, {
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ beforeRecipientId: mCId, role: 'APPROVER' }),
+    })
+    expect(moveA.status).toBe(200)
+    expect((moveA.json as any).role).toBe('APPROVER')
+
+    const detail2 = await api('GET', `/api/email-lists/${listId}`, { headers: auth() })
+    const members2 = (detail2.json as any).recipients
+    expect(members2.map((m: any) => m.recipient.employeeCode)).toEqual(['ROLEA', 'ROLEC', 'ROLEB'])
+    expect(members2.map((m: any) => m.priority)).toEqual([0, 1, 2])
+    expect(members2[0].role).toBe('APPROVER')
+
+    const selfPos = await api('PATCH', `/api/email-lists/${listId}/recipients/${bId}`, {
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ beforeRecipientId: mBId }),
+    })
+    expect(selfPos.status).toBe(400)
+    expect((selfPos.json as any).message).toContain('relative to itself')
+
+    const both = await api('POST', `/api/email-lists/${listId}/recipients`, {
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipientId: dId,
+        beforeRecipientId: mAId,
+        afterRecipientId: mBId,
+      }),
+    })
+    expect(both.status).toBe(400)
+    expect((both.json as any).message).toContain('cannot both be set')
+
+    const unknownAnchor = await api('POST', `/api/email-lists/${listId}/recipients`, {
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipientId: dId, beforeRecipientId: '99999999-9999-4999-8999-999999999999' }),
+    })
+    expect(unknownAnchor.status).toBe(404)
+  })
+
+  it('deletes a membership', async () => {
+    const apps = await api('GET', '/api/applications', { headers: auth() })
+    const app = (apps.json as any[])[0]
+    const list = await api('POST', '/api/email-lists', {
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ applicationId: app.id, code: 'DEL_MEMBER', name: 'Delete Member List' }),
+    })
+    expect(list.status).toBe(201)
+    const listId = (list.json as any).id
+    const rid = await createRecipient('DELEMB', 'Delete Member', 'delemb@company.com')
+
+    const mem = await api('POST', `/api/email-lists/${listId}/recipients`, {
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipientId: rid, role: 'OBSERVER' }),
+    })
+    expect(mem.status).toBe(201)
+
+    const del = await api('DELETE', `/api/email-lists/${listId}/recipients/${rid}`, { headers: auth() })
+    expect(del.status).toBe(200)
+    expect((del.json as any).role).toBe('OBSERVER')
+  })
+})
+
+describe('department delete + unassign', () => {
+  it('deletes a department and unassigns its recipients (SET NULL)', async () => {
+    const dept = await api('POST', '/api/departments', {
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: 'QA_DEPT', name: 'QA Department', description: 'temp' }),
+    })
+    expect(dept.status).toBe(201)
+    const deptId = (dept.json as any).id
+
+    const rec = await api('POST', '/api/recipients', {
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        employeeCode: 'DEPQA',
+        name: 'Dept QA',
+        email: 'deptqa@company.com',
+        departmentId: deptId,
+      }),
+    })
+    expect(rec.status).toBe(201)
+    const recId = (rec.json as any).id
+    expect((rec.json as any).departmentId).toBe(deptId)
+
+    const del = await api('DELETE', `/api/departments/${deptId}`, { headers: auth() })
+    expect(del.status).toBe(200)
+    expect((del.json as any).code).toBe('QA_DEPT')
+
+    const gone = await api('GET', `/api/departments/${deptId}`, { headers: auth() })
+    expect(gone.status).toBe(404)
+
+    const recAfter = await api('GET', `/api/recipients/${recId}`, { headers: auth() })
+    expect(recAfter.status).toBe(200)
+    expect((recAfter.json as any).departmentId).toBeNull()
+    expect((recAfter.json as any).department).toBeNull()
+  })
+
+  it('returns 404 when deleting an unknown department', async () => {
+    const { status } = await api('DELETE', '/api/departments/does-not-exist', { headers: auth() })
+    expect(status).toBe(404)
   })
 })
 

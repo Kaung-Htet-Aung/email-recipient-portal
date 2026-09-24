@@ -100,20 +100,45 @@ export const updateEmailListSchema = z
 
 export const recipientTypeEnum = z.enum(['TO', 'CC', 'BCC'])
 
+export const membershipRoleSchema = z.string().max(255).optional()
+
+const placementSuperRefine = (
+  value: { beforeRecipientId?: string; afterRecipientId?: string },
+  ctx: z.RefinementCtx,
+) => {
+  if (value.beforeRecipientId && value.afterRecipientId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'beforeRecipientId and afterRecipientId cannot both be set',
+    })
+  }
+}
+
+const placementFields = {
+  beforeRecipientId: z.string().uuid().optional(),
+  afterRecipientId: z.string().uuid().optional(),
+}
+
 export const addRecipientSchema = z
   .object({
     recipientId: z.string().uuid(),
     recipientType: recipientTypeEnum.optional(),
+    role: membershipRoleSchema,
     priority: z.coerce.number().int().min(0).optional(),
+    ...placementFields,
   })
   .strict()
+  .superRefine(placementSuperRefine)
 
 export const updateRecipientTypeSchema = z
   .object({
-    recipientType: recipientTypeEnum,
+    recipientType: recipientTypeEnum.optional(),
+    role: membershipRoleSchema,
     priority: z.coerce.number().int().min(0).optional(),
+    ...placementFields,
   })
   .strict()
+  .superRefine(placementSuperRefine)
 
 export const createCredentialSchema = z
   .object({

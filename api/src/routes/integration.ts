@@ -4,7 +4,7 @@ import { appGuard } from '../middleware/app-guard'
 import { forbidden, notFound } from '../errors'
 
 const MEMBERS_WITH_RECIPIENT = `
-  SELECT r.name, r.email, r.status, m.recipient_type
+  SELECT r.name, r.email, r.status, m.recipient_type, m.role, m.priority
   FROM email_list_recipients m
   JOIN email_recipients r ON r.id = m.recipient_id
 `
@@ -37,11 +37,17 @@ integrationRoutes.get('/:applicationCode/:listCode', appGuard, async (c) => {
          m.priority ASC`,
     )
     .bind(list.id)
-    .all<{ name: string; email: string; status: string; recipient_type: string }>()
+    .all<{ name: string; email: string; status: string; recipient_type: string; role: string | null; priority: number }>()
 
   const recipients = members.results
     .filter((m) => m.status === 'ACTIVE')
-    .map((m) => ({ name: m.name, email: m.email, type: m.recipient_type }))
+    .map((m) => ({
+      name: m.name,
+      email: m.email,
+      type: m.recipient_type,
+      role: m.role,
+      priority: m.priority,
+    }))
 
   return c.json({ application: app.code, list: list.code, recipients })
 })

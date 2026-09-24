@@ -38,7 +38,6 @@ export const useAuthStore = create<AuthState>((set) => ({
       email,
       password,
     });
-    console.log(data)
     window.localStorage.setItem("erp_token", data.token);
     window.localStorage.setItem("erp_user", JSON.stringify(data.user));
     set({ token: data.token, user: data.user, hydrated: true });

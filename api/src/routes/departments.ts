@@ -200,6 +200,37 @@ departmentRoutes.patch('/:id/toggle-status', async (c) => {
   return c.json(toDepartment(updated!))
 })
 
+departmentRoutes.delete('/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  const dept = await db
+    .prepare('SELECT * FROM departments WHERE id = ?')
+    .bind(id)
+    .first<DepartmentRow>()
+  if (!dept) throw notFound('Department not found')
+
+  await db
+    .prepare('UPDATE email_recipients SET department_id = NULL, updated_at = ? WHERE department_id = ?')
+    .bind(now(), id)
+    .run()
+  await db.prepare('DELETE FROM departments WHERE id = ?').bind(id).run()
+
+  await recordAudit(db, {
+    userId: c.get('admin')!.id,
+    action: 'DELETE_DEPARTMENT',
+    entityType: 'Department',
+    entityId: id,
+    oldValue: {
+      code: dept.code,
+      name: dept.name,
+      description: dept.description,
+      status: dept.status,
+    },
+  })
+
+  return c.json(toDepartment(dept))
+})
+
 const RECIPIENT_SELECT_SQL = `
   r.id, r.employee_code, r.name, r.email, r.department_id, r.status, r.created_at, r.updated_at
 `

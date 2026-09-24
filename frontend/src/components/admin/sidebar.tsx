@@ -16,8 +16,8 @@ export function Sidebar() {
           <Image src='/images/logo.png' alt="logo" width={100} height={100}/>
         </div>
         <div className="leading-tight">
-          <p className="text-sm font-semibold">Email Recipient</p>
-          <p className="text-xs text-muted-foreground">Portal</p>
+          <p className="text-sm font-semibold">Workflow System</p>
+        
         </div>
       </div>    
       <nav className="flex-1 space-y-1 p-2">

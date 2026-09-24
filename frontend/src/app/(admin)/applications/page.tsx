@@ -256,7 +256,7 @@ export default function ApplicationsPage() {
             <DialogDescription>
               {editing
                 ? "Update application details."
-                : "Register a new external application with the portal."}
+                : "Register a new external application with the ."}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
